@@ -37,7 +37,11 @@ public class Teleop extends LinearOpMode {
     // Shooter velocity (tunable in FTC Dashboard)
     public static double NECTAR_VEL = 1750;
     public static double POLLEN_VEL = 1750;
-    public static double LS_Sens = 0.5;
+    public static double LS_Sens = 0.75;
+    public static double ANGLE1 = 90;
+    public static boolean OPEN1 = false;
+    public static double ANGLE2 = 90;
+    public static boolean OPEN2 = false;
     public static String  LS_Direction = "NOT IN USE";
 
     @Override
@@ -90,11 +94,11 @@ public class Teleop extends LinearOpMode {
         runtime.reset();
 
         while (opModeIsActive()) {
-            MecanumDrive();
-            NectarLauncher();
-            PollenLauncher();
+            MecanumDrive(gamepad1.left_stick_y, gamepad1.left_stick_x,gamepad1.right_stick_x );
+            Launcher();
             Intake();
             LinearSlide();
+            GateControls();
 
 
             telemetry.addData("Status", "Run Time: " + runtime);
@@ -110,24 +114,33 @@ public class Teleop extends LinearOpMode {
     }
 
     // Shooter control
-    private void NectarLauncher() {
+    private void Launcher() {
 
         if (gamepad1.b){
             Nectar.setVelocity(NECTAR_VEL);
         }
+        if (gamepad1.a){
+            Pollen.setVelocity(POLLEN_VEL);
+        }
         if (gamepad1.x){
             Nectar.setVelocity(0);
+            Pollen.setVelocity(0);
             shootingNectar = false;
+            shootingPollen = false;
         }
-        if (gamepad1.y&&!shootingNectar){
+        if (gamepad1.right_bumper&&!shootingNectar&&!shootingPollen){
             Nectar.setVelocity(-NECTAR_VEL);
+            Pollen.setVelocity(-POLLEN_VEL);
             shootingNectar=true;
+            shootingPollen=true;
             sleep(10);
             Nectar.setVelocity(0);
+            Pollen.setVelocity(0);
             shootingNectar = false;
+            shootingPollen = false;
         }
     }
-    private void PollenLauncher() {
+    /*private void PollenLauncher() {
 
         if (gamepad1.a){
             Pollen.setVelocity(POLLEN_VEL);
@@ -143,7 +156,7 @@ public class Teleop extends LinearOpMode {
             Pollen.setVelocity(0);
             shootingPollen = false;
         }
-    }
+    }*/
 
     private void LinearSlide() {
         if (gamepad1.dpad_up){
@@ -160,6 +173,21 @@ public class Teleop extends LinearOpMode {
         }
 
     }
+
+    public void GateControls(){
+        if (gamepad1.dpad_right){
+            if (OPEN1) Gate1.setPosition((135+ANGLE1)/270);
+            else Gate1.setPosition((135-ANGLE1)/270);
+            OPEN1= !OPEN1;
+        }
+        if (gamepad1.dpad_left){
+            if (OPEN2) Gate2.setPosition((135+ANGLE2)/270);
+            else Gate2.setPosition((135-ANGLE2)/270);
+            OPEN2=!OPEN2;
+        }
+    }
+
+
     private void Intake() {
         if (gamepad1.left_trigger>0)
             INTAKE.setPower(1);
@@ -169,11 +197,12 @@ public class Teleop extends LinearOpMode {
             INTAKE.setPower(0);
         }
 
-    private void MecanumDrive(){
+    private void MecanumDrive(double X, double Y, double R){
         // Mecanum drive calculations
-        double forward = -gamepad1.left_stick_y;
-        double strafe = gamepad1.left_stick_x;
-        double turn = gamepad1.right_stick_x;
+
+        double forward = -X;
+        double strafe = Y;
+        double turn = R;
 
         lbPower = forward - strafe + turn;
         lfPower = forward + strafe + turn;
