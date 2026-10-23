@@ -5,13 +5,14 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.hardware.Servo;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 
 @Config
-@TeleOp(name = "Cobalt")
-public class Cobalt extends LinearOpMode {
+@TeleOp(name = "TeleopV1")
+public class TeleopV1 extends LinearOpMode {
 
     private DcMotor LB; // 0C
     private DcMotor LF; // 1C
@@ -21,9 +22,10 @@ public class Cobalt extends LinearOpMode {
     // Drive power values
     private DcMotorEx Nectar; // 0E
     private DcMotorEx Pollen; // 1E
-    private DcMotorEx LinearSlide;
-    private DcMotorEx INTAKE; // 3E
-
+    private DcMotor LS;
+    private DcMotor INTAKE; // 3E
+    private Servo Gate1;
+    private Servo Gate2;
 
     double lbPower;
     double lfPower;
@@ -33,8 +35,10 @@ public class Cobalt extends LinearOpMode {
     boolean shootingPollen = false;
 
     // Shooter velocity (tunable in FTC Dashboard)
-    public static double NECTAR_VEL = 2000;
-    public static double POLLEN_VEL = 2000;
+    public static double NECTAR_VEL = 1750;
+    public static double POLLEN_VEL = 1750;
+    public static double LS_Sens = 0.5;
+    public static String  LS_Direction = "NOT IN USE";
 
     @Override
     public void runOpMode() {
@@ -48,12 +52,23 @@ public class Cobalt extends LinearOpMode {
         RF = hardwareMap.get(DcMotor.class, "RF");
         Nectar = hardwareMap.get(DcMotorEx.class, "NECTAR");
         Pollen = hardwareMap.get(DcMotorEx.class, "POLLEN");
-        LinearSlide = hardwareMap.get(DcMotorEx.class, "LS");
-        INTAKE = hardwareMap.get(DcMotorEx.class, "Intake");
+        LS = hardwareMap.get(DcMotor.class, "LS");
+        INTAKE = hardwareMap.get(DcMotor.class, "Intake");
+        Gate1 = hardwareMap.get(Servo.class, "Gate1");
+        Gate2 = hardwareMap.get(Servo.class, "Gate2");
 
 
         // Directions
-        Nectar.setDirection(DcMotor.Direction.REVERSE);
+        //LB.setDirection(DcMotor.Direction.REVERSE);
+        //LF.setDirection(DcMotor.Direction.REVERSE);
+        //RB.setDirection(DcMotor.Direction.REVERSE);
+        //RF.setDirection(DcMotor.Direction.REVERSE);
+        //Nectar.setDirection(DcMotor.Direction.REVERSE);
+        Pollen.setDirection(DcMotor.Direction.REVERSE);
+        LS.setDirection(DcMotor.Direction.REVERSE);
+        //INTAKE.setDirection(DcMotor.Direction.REVERSE);
+        Gate1.setPosition(0.0);
+        Gate2.setPosition(0.0);
 
         // Reset encoders
         LB.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -81,12 +96,13 @@ public class Cobalt extends LinearOpMode {
             NectarLauncher();
             PollenLauncher();
             Intake();
-            //LinearSlide();
+            LinearSlide();
 
 
             telemetry.addData("Status", "Run Time: " + runtime);
             telemetry.addData("Nectar:", NECTAR_VEL);
             telemetry.addData("Pollen:", POLLEN_VEL);
+            telemetry.addData("Linear Slide:", LS_Sens+LS_Direction);
             telemetry.addData("LB:", lbPower);
             telemetry.addData("LF:", lfPower);
             telemetry.addData("RB:", rbPower);
@@ -131,16 +147,28 @@ public class Cobalt extends LinearOpMode {
         }
     }
 
-    /*private void LinearSlide() {
-        
-    }*/
+    private void LinearSlide() {
+        if (gamepad1.dpad_up){
+            LS_Direction = "UP";
+            LS.setPower(LS_Sens);
+        }
+        else if (gamepad1.dpad_down){
+            LS_Direction = "DOWN";
+            LS.setPower(-LS_Sens);
+        }
+        else {
+            LS_Direction = "NOT IN USE";
+            LS.setPower(0);
+        }
+
+    }
     private void Intake() {
         if (gamepad1.left_trigger>0)
-            INTAKE.setVelocity(2000);
+            INTAKE.setPower(1);
         else if (gamepad1.left_bumper)
-            INTAKE.setVelocity(-2000);
+            INTAKE.setPower(-1);
         else
-            INTAKE.setVelocity(0);
+            INTAKE.setPower(0);
         }
 
     private void MecanumDrive(){
