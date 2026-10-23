@@ -11,8 +11,8 @@ import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 
 @Config
-@TeleOp(name = "TeleopV1")
-public class TeleopV1 extends LinearOpMode {
+@TeleOp(name = "Teleop")
+public class Teleop extends LinearOpMode {
 
     private DcMotor LB; // 0C
     private DcMotor LF; // 1C
@@ -81,12 +81,10 @@ public class TeleopV1 extends LinearOpMode {
         RB.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         RF.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-        telemetry.addLine("Здравствуйте!");
+        //telemetry.addLine("Здравствуйте!");
+        telemetry.addLine("안녕하세요");
         telemetry.addData("Status", "Initialized");
         telemetry.update();
-
-        waitForStart();
-        runtime.reset();
 
         waitForStart();
         runtime.reset();
@@ -102,7 +100,7 @@ public class TeleopV1 extends LinearOpMode {
             telemetry.addData("Status", "Run Time: " + runtime);
             telemetry.addData("Nectar:", NECTAR_VEL);
             telemetry.addData("Pollen:", POLLEN_VEL);
-            telemetry.addData("Linear Slide:", LS_Sens+LS_Direction);
+            telemetry.addData("Linear Slide:", LS_Sens+" "+LS_Direction);
             telemetry.addData("LB:", lbPower);
             telemetry.addData("LF:", lfPower);
             telemetry.addData("RB:", rbPower);
@@ -149,11 +147,11 @@ public class TeleopV1 extends LinearOpMode {
 
     private void LinearSlide() {
         if (gamepad1.dpad_up){
-            LS_Direction = "UP";
+            LS_Direction = "UPWARDS";
             LS.setPower(LS_Sens);
         }
         else if (gamepad1.dpad_down){
-            LS_Direction = "DOWN";
+            LS_Direction = "DOWNWARDS";
             LS.setPower(-LS_Sens);
         }
         else {
