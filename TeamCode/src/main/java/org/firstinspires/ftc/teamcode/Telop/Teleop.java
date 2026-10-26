@@ -1,53 +1,75 @@
 package org.firstinspires.ftc.teamcode.Telop;
 
+import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.config.Config;
+import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
+import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.PwmControl;
+import com.qualcomm.robotcore.hardware.ServoImplEx;
 import com.qualcomm.robotcore.util.ElapsedTime;
-import com.qualcomm.robotcore.hardware.Servo;
-
-import com.acmerobotics.dashboard.FtcDashboard;
-import com.acmerobotics.dashboard.config.Config;
+import com.qualcomm.robotcore.util.Range;
 
 @Config
 @TeleOp(name = "Teleop")
 public class Teleop extends LinearOpMode {
 
+    // Drivetrain (goBILDA mecanum)
     private DcMotor LB; // 0C
     private DcMotor LF; // 1C
     private DcMotor RB; // 2C
     private DcMotor RF; // 3C
 
-    // Drive power values
-    private DcMotorEx Nectar; // 0E
-    private DcMotorEx Pollen; // 1E
-    private DcMotor LS;
-    private DcMotor INTAKE; // 3E
-    private Servo Gate1;
-    private Servo Gate2;
+    // Mechanisms
+    private DcMotorEx Nectar; // 0E  flywheel
+    private DcMotorEx Pollen; // 1E  flywheel
+    private DcMotor LS;       // linear slide
+    private DcMotor INTAKE;   // 3E
+    private ServoImplEx Gate1;
+    private ServoImplEx Gate2;
 
+    // Drive power values (for telemetry)
     double lbPower;
     double lfPower;
     double rbPower;
     double rfPower;
-    boolean shootingNectar = false;
-    boolean shootingPollen = false;
 
-    // Shooter velocity (tunable in FTC Dashboard)
-    public static double NECTAR_VEL = 1750;
+    // State
+    boolean nectarOn = false;
+    boolean pollenOn = false;
+    boolean gate1Open = false;
+    boolean gate2Open = false;
+    boolean lastDpadRight = false;
+    boolean lastDpadLeft = false;
+    String lsStatus = "NOT IN USE";
+
+    // ----- Tunable in FTC Dashboard -----
+    public static double NECTAR_VEL = 1750; // ticks/sec (must be below your motor's max)
     public static double POLLEN_VEL = 1750;
     public static double LS_Sens = 0.75;
+    public static double INTAKE_POWER = 1.0;
+    public static double TRIGGER_DEADZONE = 0.1;
+    public static double STRAFE_MULT = 1.0; // try up to ~1.1 if strafing feels weaker than driving
+
+    // Gate angles: how far (in degrees) each gate moves from the 135° center
+    // closed = 135 - ANGLE, open = 135 + ANGLE (swap the sign if a gate moves the wrong way)
     public static double ANGLE1 = 90;
-    public static boolean OPEN1 = false;
     public static double ANGLE2 = 90;
-    public static boolean OPEN2 = false;
-    public static String  LS_Direction = "NOT IN USE";
+    private static final double SERVO_RANGE_DEG = 270.0;
 
     @Override
     public void runOpMode() {
         ElapsedTime runtime = new ElapsedTime();
         FtcDashboard dashboard = FtcDashboard.getInstance();
+        telemetry = new MultipleTelemetry(telemetry, dashboard.getTelemetry());
+
+        // Faster loop times: read all hub sensors/encoders in one bulk read per loop
+        for (LynxModule hub : hardwareMap.getAll(LynxModule.class)) {
+            hub.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
+        }
 
         // Hardware mapping
         LB = hardwareMap.get(DcMotor.class, "LB");
@@ -58,34 +80,43 @@ public class Teleop extends LinearOpMode {
         Pollen = hardwareMap.get(DcMotorEx.class, "POLLEN");
         LS = hardwareMap.get(DcMotor.class, "LS");
         INTAKE = hardwareMap.get(DcMotor.class, "Intake");
-        Gate1 = hardwareMap.get(Servo.class, "Gate1");
-        Gate2 = hardwareMap.get(Servo.class, "Gate2");
-
+        Gate1 = hardwareMap.get(ServoImplEx.class, "Gate1");
+        Gate2 = hardwareMap.get(ServoImplEx.class, "Gate2");
 
         // Directions
-        //LB.setDirection(DcMotor.Direction.REVERSE);
-        //LF.setDirection(DcMotor.Direction.REVERSE);
-        //RB.setDirection(DcMotor.Direction.REVERSE);
-        //RF.setDirection(DcMotor.Direction.REVERSE);
-        //Nectar.setDirection(DcMotor.Direction.REVERSE);
+        // goBILDA mecanum: motors on one side face the opposite way, so reverse the left side.
+        // If the robot drives backwards, reverse the RIGHT side instead (swap these lines).
+        LB.setDirection(DcMotor.Direction.REVERSE);
+        LF.setDirection(DcMotor.Direction.REVERSE);
+        RB.setDirection(DcMotor.Direction.FORWARD);
+        RF.setDirection(DcMotor.Direction.FORWARD);
         Pollen.setDirection(DcMotor.Direction.REVERSE);
         LS.setDirection(DcMotor.Direction.REVERSE);
-        //INTAKE.setDirection(DcMotor.Direction.REVERSE);
-        Gate1.setPosition(0.0);
-        Gate2.setPosition(0.0);
 
-        // Reset encoders
-        LB.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        LF.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        RB.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        RF.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        // Drivetrain: encoders on, brake when sticks released
+        DcMotor[] driveMotors = {LB, LF, RB, RF};
+        for (DcMotor m : driveMotors) {
+            m.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            m.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            m.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        }
 
-        LB.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        LF.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        RB.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        RF.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        // Flywheels: setVelocity() REQUIRES RUN_USING_ENCODER. Coast when off.
+        DcMotorEx[] flywheels = {Nectar, Pollen};
+        for (DcMotorEx m : flywheels) {
+            m.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            m.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            m.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+        }
 
-        //telemetry.addLine("Здравствуйте!");
+        // Linear slide: hold position when released
+        LS.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        // Gates: full 270° range on REV Smart Robot Servos
+        Gate1.setPwmRange(new PwmControl.PwmRange(500, 2500));
+        Gate2.setPwmRange(new PwmControl.PwmRange(500, 2500));
+        applyGates(); // start closed (matches gate1Open/gate2Open = false)
+
         telemetry.addLine("안녕하세요");
         telemetry.addData("Status", "Initialized");
         telemetry.update();
@@ -94,122 +125,94 @@ public class Teleop extends LinearOpMode {
         runtime.reset();
 
         while (opModeIsActive()) {
-            MecanumDrive(gamepad1.left_stick_y, gamepad1.left_stick_x,gamepad1.right_stick_x );
+            MecanumDrive(-gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
             Launcher();
             Intake();
             LinearSlide();
             GateControls();
 
-
             telemetry.addData("Status", "Run Time: " + runtime);
-            telemetry.addData("Nectar:", NECTAR_VEL);
-            telemetry.addData("Pollen:", POLLEN_VEL);
-            telemetry.addData("Linear Slide:", LS_Sens+" "+LS_Direction);
-            telemetry.addData("LB:", lbPower);
-            telemetry.addData("LF:", lfPower);
-            telemetry.addData("RB:", rbPower);
-            telemetry.addData("RF:", rfPower);
+            telemetry.addData("Nectar target/actual", "%.0f / %.0f", nectarOn ? NECTAR_VEL : 0, Nectar.getVelocity());
+            telemetry.addData("Pollen target/actual", "%.0f / %.0f", pollenOn ? POLLEN_VEL : 0, Pollen.getVelocity());
+            telemetry.addData("Linear Slide", LS_Sens + " " + lsStatus);
+            telemetry.addData("Gate1", gate1Open ? "OPEN" : "CLOSED");
+            telemetry.addData("Gate2", gate2Open ? "OPEN" : "CLOSED");
+            telemetry.addData("LB", lbPower);
+            telemetry.addData("LF", lfPower);
+            telemetry.addData("RB", rbPower);
+            telemetry.addData("RF", rfPower);
             telemetry.update();
         }
     }
 
-    // Shooter control
+    // B = start Nectar, A = start Pollen, X = stop both.
+    // Velocity is re-applied every loop so Dashboard changes take effect live.
     private void Launcher() {
+        if (gamepad1.b) nectarOn = true;
+        if (gamepad1.a) pollenOn = true;
+        if (gamepad1.x) {
+            nectarOn = false;
+            pollenOn = false;
+        }
 
-        if (gamepad1.b){
-            Nectar.setVelocity(NECTAR_VEL);
-        }
-        if (gamepad1.a){
-            Pollen.setVelocity(POLLEN_VEL);
-        }
-        if (gamepad1.x){
-            Nectar.setVelocity(0);
-            Pollen.setVelocity(0);
-            shootingNectar = false;
-            shootingPollen = false;
-        }
-        if (gamepad1.right_bumper&&!shootingNectar&&!shootingPollen){
-            Nectar.setVelocity(-NECTAR_VEL);
-            Pollen.setVelocity(-POLLEN_VEL);
-            shootingNectar=true;
-            shootingPollen=true;
-            sleep(10);
-            Nectar.setVelocity(0);
-            Pollen.setVelocity(0);
-            shootingNectar = false;
-            shootingPollen = false;
-        }
+        Nectar.setVelocity(nectarOn ? NECTAR_VEL : 0);
+        Pollen.setVelocity(pollenOn ? POLLEN_VEL : 0);
     }
-    /*private void PollenLauncher() {
 
-        if (gamepad1.a){
-            Pollen.setVelocity(POLLEN_VEL);
-        }
-        if (gamepad1.x){
-            Pollen.setVelocity(0);
-            shootingPollen = false;
-        }
-        if (gamepad1.y&&!shootingPollen){
-            Pollen.setVelocity(-POLLEN_VEL);
-            shootingPollen=true;
-            sleep(10);
-            Pollen.setVelocity(0);
-            shootingPollen = false;
-        }
-    }*/
-
+    // Dpad up/down = slide up/down (held)
     private void LinearSlide() {
-        if (gamepad1.dpad_up){
-            LS_Direction = "UPWARDS";
+        if (gamepad1.dpad_up) {
+            lsStatus = "UPWARDS";
             LS.setPower(LS_Sens);
-        }
-        else if (gamepad1.dpad_down){
-            LS_Direction = "DOWNWARDS";
+        } else if (gamepad1.dpad_down) {
+            lsStatus = "DOWNWARDS";
             LS.setPower(-LS_Sens);
-        }
-        else {
-            LS_Direction = "NOT IN USE";
+        } else {
+            lsStatus = "NOT IN USE";
             LS.setPower(0);
         }
-
     }
 
-    public void GateControls(){
-        if (gamepad1.dpad_right){
-            if (OPEN1) Gate1.setPosition((135+ANGLE1)/270);
-            else Gate1.setPosition((135-ANGLE1)/270);
-            OPEN1= !OPEN1;
-        }
-        if (gamepad1.dpad_left){
-            if (OPEN2) Gate2.setPosition((135+ANGLE2)/270);
-            else Gate2.setPosition((135-ANGLE2)/270);
-            OPEN2=!OPEN2;
-        }
+    // Dpad right = toggle Gate1, Dpad left = toggle Gate2.
+    // Edge detection: one press = one toggle (holding the button does NOT keep flipping).
+    private void GateControls() {
+        if (gamepad1.dpad_right && !lastDpadRight) gate1Open = !gate1Open;
+        if (gamepad1.dpad_left && !lastDpadLeft) gate2Open = !gate2Open;
+        lastDpadRight = gamepad1.dpad_right;
+        lastDpadLeft = gamepad1.dpad_left;
+
+        applyGates();
     }
 
+    private void applyGates() {
+        Gate1.setPosition(gatePosition(gate1Open, ANGLE1));
+        Gate2.setPosition(gatePosition(gate2Open, ANGLE2));
+    }
 
+    private double gatePosition(boolean open, double angle) {
+        double deg = open ? 135 + angle : 135 - angle;
+        return Range.clip(deg / SERVO_RANGE_DEG, 0.0, 1.0);
+    }
+
+    // Hold left trigger = intake, hold left bumper = unjam (reverse)
     private void Intake() {
-        if (gamepad1.left_trigger>0)
-            INTAKE.setPower(1);
+        if (gamepad1.left_trigger > TRIGGER_DEADZONE)
+            INTAKE.setPower(INTAKE_POWER);
         else if (gamepad1.left_bumper)
-            INTAKE.setPower(-1);
+            INTAKE.setPower(-INTAKE_POWER);
         else
             INTAKE.setPower(0);
-        }
+    }
 
-    private void MecanumDrive(double X, double Y, double R){
-        // Mecanum drive calculations
-
-        double forward = -X;
-        double strafe = Y;
-        double turn = R;
+    private void MecanumDrive(double forward, double strafe, double turn) {
+        strafe *= STRAFE_MULT;
 
         lbPower = forward - strafe + turn;
         lfPower = forward + strafe + turn;
         rbPower = forward + strafe - turn;
         rfPower = forward - strafe - turn;
 
-        // Normalize
+        // Normalize so no wheel exceeds 1.0 while keeping the ratios
         double max = Math.max(Math.max(Math.abs(lfPower), Math.abs(rfPower)),
                 Math.max(Math.abs(lbPower), Math.abs(rbPower)));
 
