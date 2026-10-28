@@ -28,8 +28,8 @@ public class Teleop extends LinearOpMode {
     private DcMotorEx Pollen; // 1E  flywheel
     private DcMotor LS;       // linear slide
     private DcMotor INTAKE;   // 3E
-    private ServoImplEx Gate1;
-    private ServoImplEx Gate2;
+    private ServoImplEx FlowerGate;
+    private ServoImplEx FlywheelGate;
 
     // Drive power values (for telemetry)
     double lbPower;
@@ -40,8 +40,8 @@ public class Teleop extends LinearOpMode {
     // State
     boolean nectarOn = false;
     boolean pollenOn = false;
-    boolean gate1Open = false;
-    boolean gate2Open = false;
+    boolean flowerGateOpen = false;
+    boolean flywheelGateOpen = false;
     boolean lastDpadRight = false;
     boolean lastDpadLeft = false;
     String lsStatus = "NOT IN USE";
@@ -56,8 +56,8 @@ public class Teleop extends LinearOpMode {
 
     // Gate angles: how far (in degrees) each gate moves from the 135° center
     // closed = 135 - ANGLE, open = 135 + ANGLE (swap the sign if a gate moves the wrong way)
-    public static double ANGLE1 = 90;
-    public static double ANGLE2 = 90;
+    public static double FLOWER_ANGLE = 90;
+    public static double FLYWHEEL_ANGLE = 90;
     private static final double SERVO_RANGE_DEG = 270.0;
 
     @Override
@@ -80,8 +80,8 @@ public class Teleop extends LinearOpMode {
         Pollen = hardwareMap.get(DcMotorEx.class, "POLLEN");
         LS = hardwareMap.get(DcMotor.class, "LS");
         INTAKE = hardwareMap.get(DcMotor.class, "Intake");
-        Gate1 = hardwareMap.get(ServoImplEx.class, "Gate1");
-        Gate2 = hardwareMap.get(ServoImplEx.class, "Gate2");
+        FlowerGate = hardwareMap.get(ServoImplEx.class, "FlowerGate");
+        FlywheelGate = hardwareMap.get(ServoImplEx.class, "FlywheelGate");
 
         // Directions
         // goBILDA mecanum: motors on one side face the opposite way, so reverse the left side.
@@ -113,9 +113,9 @@ public class Teleop extends LinearOpMode {
         LS.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // Gates: full 270° range on REV Smart Robot Servos
-        Gate1.setPwmRange(new PwmControl.PwmRange(500, 2500));
-        Gate2.setPwmRange(new PwmControl.PwmRange(500, 2500));
-        applyGates(); // start closed (matches gate1Open/gate2Open = false)
+        FlowerGate.setPwmRange(new PwmControl.PwmRange(500, 2500));
+        FlywheelGate.setPwmRange(new PwmControl.PwmRange(500, 2500));
+        applyGates(); // start closed (matches flowerGateOpen/flywheelGateOpen = false)
 
         telemetry.addLine("안녕하세요");
         telemetry.addData("Status", "Initialized");
@@ -135,8 +135,8 @@ public class Teleop extends LinearOpMode {
             telemetry.addData("Nectar target/actual", "%.0f / %.0f", nectarOn ? NECTAR_VEL : 0, Nectar.getVelocity());
             telemetry.addData("Pollen target/actual", "%.0f / %.0f", pollenOn ? POLLEN_VEL : 0, Pollen.getVelocity());
             telemetry.addData("Linear Slide", LS_Sens + " " + lsStatus);
-            telemetry.addData("Gate1", gate1Open ? "OPEN" : "CLOSED");
-            telemetry.addData("Gate2", gate2Open ? "OPEN" : "CLOSED");
+            telemetry.addData("FlowerGate", flowerGateOpen ? "OPEN" : "CLOSED");
+            telemetry.addData("FlywheelGate", flywheelGateOpen ? "OPEN" : "CLOSED");
             telemetry.addData("LB", lbPower);
             telemetry.addData("LF", lfPower);
             telemetry.addData("RB", rbPower);
@@ -173,11 +173,11 @@ public class Teleop extends LinearOpMode {
         }
     }
 
-    // Dpad right = toggle Gate1, Dpad left = toggle Gate2.
+    // Dpad right = toggle FlowerGate, Dpad left = toggle FlywheelGate.
     // Edge detection: one press = one toggle (holding the button does NOT keep flipping).
     private void GateControls() {
-        if (gamepad1.dpad_right && !lastDpadRight) gate1Open = !gate1Open;
-        if (gamepad1.dpad_left && !lastDpadLeft) gate2Open = !gate2Open;
+        if (gamepad1.dpad_right && !lastDpadRight) flowerGateOpen = !flowerGateOpen;
+        if (gamepad1.dpad_left && !lastDpadLeft) flywheelGateOpen = !flywheelGateOpen;
         lastDpadRight = gamepad1.dpad_right;
         lastDpadLeft = gamepad1.dpad_left;
 
@@ -185,8 +185,8 @@ public class Teleop extends LinearOpMode {
     }
 
     private void applyGates() {
-        Gate1.setPosition(gatePosition(gate1Open, ANGLE1));
-        Gate2.setPosition(gatePosition(gate2Open, ANGLE2));
+        FlowerGate.setPosition(gatePosition(flowerGateOpen, FLOWER_ANGLE));
+        FlywheelGate.setPosition(gatePosition(flywheelGateOpen, FLYWHEEL_ANGLE));
     }
 
     private double gatePosition(boolean open, double angle) {
