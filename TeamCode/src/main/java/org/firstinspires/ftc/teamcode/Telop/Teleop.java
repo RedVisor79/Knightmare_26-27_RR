@@ -173,6 +173,15 @@ public class Teleop extends LinearOpMode {
         }
     }
 
+    private void Intake() {
+        if (gamepad1.left_trigger > TRIGGER_DEADZONE)
+            INTAKE.setPower(INTAKE_POWER);
+        else if (gamepad1.left_bumper)
+            INTAKE.setPower(-INTAKE_POWER);
+        else
+            INTAKE.setPower(0);
+    }
+
     // Dpad right = toggle FlowerGate, Dpad left = toggle FlywheelGate.
     // Edge detection: one press = one toggle (holding the button does NOT keep flipping).
     private void GateControls() {
@@ -195,14 +204,7 @@ public class Teleop extends LinearOpMode {
     }
 
     // Hold left trigger = intake, hold left bumper = unjam (reverse)
-    private void Intake() {
-        if (gamepad1.left_trigger > TRIGGER_DEADZONE)
-            INTAKE.setPower(INTAKE_POWER);
-        else if (gamepad1.left_bumper)
-            INTAKE.setPower(-INTAKE_POWER);
-        else
-            INTAKE.setPower(0);
-    }
+
 
     private void MecanumDrive(double forward, double strafe, double turn) {
         strafe *= STRAFE_MULT;
