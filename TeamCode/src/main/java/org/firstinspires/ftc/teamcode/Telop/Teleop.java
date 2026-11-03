@@ -185,7 +185,7 @@ public class Teleop extends LinearOpMode {
     }
 
     private void Drive(){
-        if (gamepad1.right_trigger>0) MecanumDrive(gamepad1.left_stick_y, gamepad1.left_stick_x,gamepad1.right_stick_x );
+        if (gamepad1.right_trigger>0) MecanumDrive(gamepad1.left_stick_y, -gamepad1.left_stick_x,gamepad1.right_stick_x );
         else MecanumDrive(-gamepad1.left_stick_y, gamepad1.left_stick_x,gamepad1.right_stick_x );
     }
     private void MecanumDrive(double forward, double strafe, double turn){
