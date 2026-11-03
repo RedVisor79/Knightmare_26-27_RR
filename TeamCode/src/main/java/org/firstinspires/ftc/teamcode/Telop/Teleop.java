@@ -28,6 +28,9 @@ public class Teleop extends LinearOpMode {
     private Servo Gate1;
     private Servo Gate2;
 
+    // PID-controlled linear slide (see LinearSlideController.java)
+    private LinearSlideController slide;
+
     double lbPower;
     double lfPower;
     double rbPower;
@@ -36,14 +39,10 @@ public class Teleop extends LinearOpMode {
     boolean shootingPollen = false;
 
     // Shooter velocity (tunable in FTC Dashboard)
-    public static double NECTAR_VEL = 1750;
-    public static double POLLEN_VEL = 1750;
-    public static double LS_Sens = 0.75;
-    public static double ANGLE1 = 0;
-    public static boolean OPEN1 = false;
-    public static double ANGLE2 = 0;
-    public static boolean OPEN2 = false;
-    public static String  LS_Direction = "NOT IN USE";
+    public static double NECTAR_VEL = 17500;
+    public static double POLLEN_VEL = 17500;
+    private static boolean OPEN1 = false;
+    private static boolean OPEN2 = false;
 
     @Override
     public void runOpMode() {
@@ -64,8 +63,8 @@ public class Teleop extends LinearOpMode {
 
 
         // Directions
-        //LB.setDirection(DcMotor.Direction.REVERSE);
-        //LF.setDirection(DcMotor.Direction.REVERSE);
+        LB.setDirection(DcMotor.Direction.REVERSE);
+        LF.setDirection(DcMotor.Direction.REVERSE);
         //RB.setDirection(DcMotor.Direction.REVERSE);
         //RF.setDirection(DcMotor.Direction.REVERSE);
         //Nectar.setDirection(DcMotor.Direction.REVERSE);
@@ -86,6 +85,10 @@ public class Teleop extends LinearOpMode {
         RB.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         RF.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
+        // Linear slide (slide must be fully down at init)
+        slide = new LinearSlideController(LS);
+        slide.init();
+
         //telemetry.addLine("Здравствуйте!");
         telemetry.addLine("안녕하세요");
         telemetry.addData("Status", "Initialized");
@@ -93,9 +96,10 @@ public class Teleop extends LinearOpMode {
 
         waitForStart();
         runtime.reset();
+        slide.start();
 
         while (opModeIsActive()) {
-            MecanumDrive(gamepad1.left_stick_y, gamepad1.left_stick_x,gamepad1.right_stick_x );
+            Drive();
             Launcher();
             Intake();
             LinearSlide();
@@ -104,9 +108,13 @@ public class Teleop extends LinearOpMode {
 
 
             telemetry.addData("Status", "Run Time: " + runtime);
-            telemetry.addData("Nectar:", NECTAR_VEL);
+            telemetry.addData("Nectar Target:", NECTAR_VEL);
+            telemetry.addData("Nectar Actual: ", Nectar.getVelocity());
             telemetry.addData("Pollen:", POLLEN_VEL);
-            telemetry.addData("Linear Slide:", LS_Sens+" "+LS_Direction);
+            telemetry.addData("Pollen Actual: ", Pollen.getVelocity());
+            telemetry.addData("Slide Target", slide.getTarget());
+            telemetry.addData("Slide Pos", slide.getPosition());
+            telemetry.addData("Slide Power", slide.getPower());
             telemetry.addData("LB:", lbPower);
             telemetry.addData("LF:", lfPower);
             telemetry.addData("RB:", rbPower);
@@ -145,20 +153,9 @@ public class Teleop extends LinearOpMode {
         }
     }
 
+    // Linear slide: dpad_up toggles between up/down positions, held by PID
     private void LinearSlide() {
-        if (gamepad1.dpad_up){
-            LS_Direction = "UPWARDS";
-            LS.setPower(LS_Sens);
-        }
-        else if (gamepad1.dpad_down){
-            LS_Direction = "DOWNWARDS";
-            LS.setPower(-LS_Sens);
-        }
-        else {
-            LS_Direction = "NOT IN USE";
-            LS.setPower(0);
-        }
-
+        slide.update(gamepad1.dpad_up);
     }
 
     public void FlowerGate(){
@@ -187,12 +184,12 @@ public class Teleop extends LinearOpMode {
             INTAKE.setPower(0);
     }
 
-    private void MecanumDrive(double X, double Y, double R){
+    private void Drive(){
+        if (gamepad1.right_trigger>0) MecanumDrive(gamepad1.left_stick_y, gamepad1.left_stick_x,gamepad1.right_stick_x );
+        else MecanumDrive(-gamepad1.left_stick_y, gamepad1.left_stick_x,gamepad1.right_stick_x );
+    }
+    private void MecanumDrive(double forward, double strafe, double turn){
         // Mecanum drive calculations
-
-        double forward = -X;
-        double strafe = Y;
-        double turn = R;
 
         lbPower = forward - strafe + turn;
         lfPower = forward + strafe + turn;
