@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.Telop;
+package org.firstinspires.ftc.teamcode.Teleop;
 
 import com.qualcomm.hardware.dfrobot.HuskyLens;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -13,8 +13,8 @@ import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 
 @Config
-@TeleOp(name = "Teleop")
-public class Teleop extends LinearOpMode {
+@TeleOp(name = "AutoAimAndShoot")
+public class AutoAimAndShoot extends LinearOpMode {
 
     // Drivetrain Motors
     private DcMotor LB; // 0C

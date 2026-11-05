@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.Telop;
+package org.firstinspires.ftc.teamcode.Teleop;
 
 import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.robotcore.hardware.DcMotor;

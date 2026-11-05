@@ -1,10 +1,9 @@
-package org.firstinspires.ftc.teamcode.Telop;
+package org.firstinspires.ftc.teamcode.Teleop;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.hardware.Servo;
 
@@ -13,7 +12,7 @@ import com.acmerobotics.dashboard.config.Config;
 
 @Config
 @TeleOp(name = "Teleop")
-public class Teleop extends LinearOpMode {
+public class Alpha extends LinearOpMode {
 
     private DcMotor LB; // 0C
     private DcMotor LF; // 1C
@@ -23,10 +22,10 @@ public class Teleop extends LinearOpMode {
     // Drive power values
     private DcMotorEx Nectar; // 0E
     private DcMotorEx Pollen; // 1E
-    private DcMotor LS;
+    private DcMotor LS; //2E
     private DcMotor INTAKE; // 3E
-    private Servo Gate1;
-    private Servo Gate2;
+    private Servo FLYWHEELGATE;
+    private Servo FLOWERGATE;
 
     // PID-controlled linear slide (see LinearSlideController.java)
     private LinearSlideController slide;
@@ -57,9 +56,9 @@ public class Teleop extends LinearOpMode {
         Nectar = hardwareMap.get(DcMotorEx.class, "NECTAR");
         Pollen = hardwareMap.get(DcMotorEx.class, "POLLEN");
         LS = hardwareMap.get(DcMotor.class, "LS");
-        INTAKE = hardwareMap.get(DcMotor.class, "Intake");
-        Gate1 = hardwareMap.get(Servo.class, "Gate1");
-        Gate2 = hardwareMap.get(Servo.class, "Gate2");
+        INTAKE = hardwareMap.get(DcMotor.class, "INTAKE");
+        FLYWHEELGATE = hardwareMap.get(Servo.class, "FLYWHEEL");
+        FLOWERGATE = hardwareMap.get(Servo.class, "FLOWER");
 
 
         // Directions
@@ -71,8 +70,8 @@ public class Teleop extends LinearOpMode {
         Pollen.setDirection(DcMotor.Direction.REVERSE);
         LS.setDirection(DcMotor.Direction.REVERSE);
         //INTAKE.setDirection(DcMotor.Direction.REVERSE);
-        Gate1.setPosition(0.0);
-        Gate2.setPosition(0.0);
+        FLYWHEELGATE.setPosition(0.0);
+        FLOWERGATE.setPosition(0.0);
 
         // Reset encoders
         LB.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -119,8 +118,8 @@ public class Teleop extends LinearOpMode {
             telemetry.addData("LF:", lfPower);
             telemetry.addData("RB:", rbPower);
             telemetry.addData("RF:", rfPower);
-            telemetry.addData("FlowerL ", OPEN1);
-            telemetry.addData("FlywheelGate: ",OPEN2);
+            telemetry.addData("Flywheel Gate: ", OPEN1);
+            telemetry.addData("Flower Gate: ",OPEN2);
             telemetry.update();
         }
     }
@@ -160,16 +159,16 @@ public class Teleop extends LinearOpMode {
 
     public void FlowerGate(){
         if (gamepad1.dpad_right){
-            if (!OPEN1) Gate1.setPosition(1);
-            else Gate1.setPosition(0);
+            if (!OPEN1) FLYWHEELGATE.setPosition(1);
+            else FLYWHEELGATE.setPosition(0);
             OPEN1= !OPEN1;
         }
     }
 
     public void FlywheelGate(){
         if (gamepad1.dpad_left){
-            if (!OPEN2) Gate2.setPosition(1);
-            else Gate2.setPosition(0);
+            if (!OPEN2) FLOWERGATE.setPosition(1);
+            else FLOWERGATE.setPosition(0);
             OPEN2=!OPEN2;
         }
     }
