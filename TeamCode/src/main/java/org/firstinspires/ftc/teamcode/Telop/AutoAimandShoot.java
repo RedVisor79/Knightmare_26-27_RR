@@ -1,5 +1,3 @@
-//This code was created to be used with the HuskLens AI Camera if you plan on using limelight please let me know
-
 package org.firstinspires.ftc.teamcode.Telop;
 
 import com.qualcomm.hardware.dfrobot.HuskyLens;
@@ -9,6 +7,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.util.Range;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
@@ -30,7 +29,7 @@ public class Teleop extends LinearOpMode {
     private DcMotor INTAKE; // 3E
     private Servo Gate1;
     private Servo Gate2;
-    private HuskyLens huskylens; // Added HuskyLens vision sensor
+    private HuskyLens huskylens;
 
     // PID-controlled linear slide (see LinearSlideController.java)
     private LinearSlideController slide;
@@ -42,17 +41,28 @@ public class Teleop extends LinearOpMode {
     boolean shootingNectar = false;
     boolean shootingPollen = false;
 
-    // Shooter velocity (tunable in FTC Dashboard)
-    public static double NECTAR_VEL = 17500;
-    public static double POLLEN_VEL = 17500;
+    // Shooter velocity (tunable base values in FTC Dashboard)
+    public static double BASE_NECTAR_VEL = 17500;
+    public static double BASE_POLLEN_VEL = 17500;
     private static boolean OPEN1 = false;
     private static boolean OPEN2 = false;
 
-    // HuskyLens Aim-Assist Tuning Constants
+    // HuskyLens Aim-Assist & Dynamic Distance Tuning Constants
     private final int TARGET_TAG_ID = 1;     // Change to your desired AprilTag ID
     private final int CENTER_X_PIXEL = 160;  // Center X frame coordinate (320 / 2)
     private final int PIXEL_THRESHOLD = 5;   // Error margin for centering
     private final double AUTO_TURN_SPEED = 0.15; // Auto-search & align rotation speed
+
+    // Distance/RPM scaling constants (tune based on your robot's physical testing)
+    private final int CLOSE_TAG_HEIGHT = 100; // Pixel height of tag when robot is close to goal
+    private final int FAR_TAG_HEIGHT = 30;    // Pixel height of tag when robot is far from goal
+    private final double MIN_VELOCITY = 12000; // Minimum shooter RPM for close shots
+    private final double MAX_VELOCITY = 22000; // Maximum shooter RPM for far shots
+
+    // Live variables to track dynamic calculations for telemetry
+    private double dynamicNectarVel = 17500;
+    private double dynamicPollenVel = 17500;
+    private int currentTagHeight = 0;
 
     @Override
     public void runOpMode() {
@@ -70,7 +80,7 @@ public class Teleop extends LinearOpMode {
         INTAKE = hardwareMap.get(DcMotor.class, "Intake");
         Gate1 = hardwareMap.get(Servo.class, "Gate1");
         Gate2 = hardwareMap.get(Servo.class, "Gate2");
-        huskylens = hardwareMap.get(HuskyLens.class, "huskylens"); // Map HuskyLens
+        huskylens = hardwareMap.get(HuskyLens.class, "huskylens");
 
         // Directions
         LB.setDirection(DcMotor.Direction.REVERSE);
@@ -118,40 +128,40 @@ public class Teleop extends LinearOpMode {
             FlowerGate();
 
             telemetry.addData("Status", "Run Time: " + runtime);
-            telemetry.addData("Nectar Target:", NECTAR_VEL);
-            telemetry.addData("Nectar Actual: ", Nectar.getVelocity());
-            telemetry.addData("Pollen:", POLLEN_VEL);
-            telemetry.addData("Pollen Actual: ", Pollen.getVelocity());
+            telemetry.addData("Tag Height (Pixels)", currentTagHeight);
+            telemetry.addData("Dynamic Nectar Vel", dynamicNectarVel);
+            telemetry.addData("Dynamic Pollen Vel", dynamicPollenVel);
             telemetry.addData("Slide Target", slide.getTarget());
             telemetry.addData("Slide Pos", slide.getPosition());
-            telemetry.addData("Slide Power", slide.getPower());
             telemetry.addData("LB:", lbPower);
             telemetry.addData("LF:", lfPower);
             telemetry.addData("RB:", rbPower);
             telemetry.addData("RF:", rfPower);
-            telemetry.addData("FlowerL ", OPEN1);
-            telemetry.addData("FlywheelGate: ", OPEN2);
             telemetry.update();
         }
     }
 
     // Shooter control
     private void Launcher() {
-        if (gamepad1.b){
-            Nectar.setVelocity(NECTAR_VEL);
-        }
-        if (gamepad1.a){
-            Pollen.setVelocity(POLLEN_VEL);
-        }
-        if (gamepad1.x){
+        // If holding Y (auto-aim), we can optionally apply the dynamically calculated velocities.
+        // Otherwise, manual buttons use the static dashboard variables.
+        if (gamepad1.y) {
+            Nectar.setVelocity(dynamicNectarVel);
+            Pollen.setVelocity(dynamicPollenVel);
+        } else if (gamepad1.b){
+            Nectar.setVelocity(BASE_NECTAR_VEL);
+        } else if (gamepad1.a){
+            Pollen.setVelocity(BASE_POLLEN_VEL);
+        } else if (gamepad1.x){
             Nectar.setVelocity(0);
             Pollen.setVelocity(0);
             shootingNectar = false;
             shootingPollen = false;
         }
+        
         if (gamepad1.right_bumper && !shootingNectar && !shootingPollen){
-            Nectar.setVelocity(-NECTAR_VEL);
-            Pollen.setVelocity(-POLLEN_VEL);
+            Nectar.setVelocity(-BASE_NECTAR_VEL);
+            Pollen.setVelocity(-BASE_POLLEN_VEL);
             shootingNectar = true;
             shootingPollen = true;
             sleep(10);
@@ -197,31 +207,46 @@ public class Teleop extends LinearOpMode {
         double strafe  = gamepad1.right_trigger > 0 ? -gamepad1.left_stick_x : gamepad1.left_stick_x;
         double turn    = gamepad1.right_stick_x;
 
-        // --- HuskyLens Auto-Aim & Search Assist Override ---
-        // Hold Gamepad 1 'Y' to enable automatic tracking and searching.
+        // --- HuskyLens Auto-Aim, Search Assist, & Distance RPM Scaling ---
         if (gamepad1.y) {
             HuskyLens.Block[] blocks = huskylens.blocks();
             boolean targetFound = false;
             int targetX = 0;
+            int targetHeight = 0;
 
             for (HuskyLens.Block block : blocks) {
                 if (block.id == TARGET_TAG_ID) {
                     targetFound = true;
                     targetX = block.x;
+                    targetHeight = block.height; // Capture height of AprilTag bounding box
                     break;
                 }
             }
 
             if (targetFound) {
+                currentTagHeight = targetHeight;
+
+                // 1. Horizontal Steering Alignment
                 int error = targetX - CENTER_X_PIXEL;
                 if (Math.abs(error) > PIXEL_THRESHOLD) {
                     turn = (error > 0) ? AUTO_TURN_SPEED : -AUTO_TURN_SPEED;
                 } else {
-                    turn = 0; // Perfectly centered on the AprilTag goal
+                    turn = 0; 
                     telemetry.addData("Aim Assist", "LOCKED ON TARGET!");
                 }
+
+                // 2. Dynamic Distance-Based RPM Calculation
+                // As tag height increases (robot is closer), velocity decreases. 
+                // As tag height decreases (robot is farther), velocity increases.
+                double distanceRatio = (double)(targetHeight - FAR_TAG_HEIGHT) / (CLOSE_TAG_HEIGHT - FAR_TAG_HEIGHT);
+                distanceRatio = Range.clip(distanceRatio, 0.0, 1.0); // Keep between 0 and 1
+
+                // Interpolate target velocity between MIN and MAX velocities based on distance
+                dynamicNectarVel = MAX_VELOCITY - (distanceRatio * (MAX_VELOCITY - MIN_VELOCITY));
+                dynamicPollenVel = MAX_VELOCITY - (distanceRatio * (MAX_VELOCITY - MIN_VELOCITY));
+
             } else {
-                // If tag is out of view, automatically spin in place to scan for it
+                // Search pattern if tag is missing
                 turn = AUTO_TURN_SPEED;
                 telemetry.addData("Aim Assist", "Searching for Tag ID %d...", TARGET_TAG_ID);
             }
@@ -231,13 +256,11 @@ public class Teleop extends LinearOpMode {
     }
 
     private void MecanumDrive(double forward, double strafe, double turn){
-        // Mecanum drive calculations
         lbPower = forward - strafe + turn;
         lfPower = forward + strafe + turn;
         rbPower = forward + strafe - turn;
         rfPower = forward - strafe - turn;
 
-        // Normalize
         double max = Math.max(Math.max(Math.abs(lfPower), Math.abs(rfPower)),
                 Math.max(Math.abs(lbPower), Math.abs(rbPower)));
 
