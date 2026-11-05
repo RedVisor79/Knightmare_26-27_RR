@@ -12,10 +12,10 @@ public class LinearSlideController {
     public static double kI = 0.0;
     public static double kD = 0.0002;
     public static double kG = 0.08;          // constant power to fight gravity when up
-    public static double UP_POS = 2000;      // encoder ticks, tune this
+    public static double UP_POS = 425;      // encoder ticks, tune this
     public static double DOWN_POS = 0;
     public static double MAX_POWER = 1.0;
-    public static double I_LIMIT = 0.3;      // anti-windup cap on the I term's contribution
+    public static double I_LIMIT = 0.3;      // anti-windup cap on the i term's contribution
 
     private final DcMotor motor;
     private final ElapsedTime timer = new ElapsedTime();

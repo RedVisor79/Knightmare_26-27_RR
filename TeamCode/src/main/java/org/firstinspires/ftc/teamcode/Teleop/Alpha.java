@@ -38,8 +38,8 @@ public class Alpha extends LinearOpMode {
     boolean shootingPollen = false;
 
     // Shooter velocity (tunable in FTC Dashboard)
-    public static double NECTAR_VEL = 17500;
-    public static double POLLEN_VEL = 17500;
+    public static double NECTAR_VEL = 1750;
+    public static double POLLEN_VEL = 1750;
     private static boolean OPEN1 = false;
     private static boolean OPEN2 = false;
 
@@ -173,7 +173,6 @@ public class Alpha extends LinearOpMode {
         }
     }
 
-
     private void Intake() {
         if (gamepad1.left_trigger>0)
             INTAKE.setPower(1);
@@ -184,8 +183,8 @@ public class Alpha extends LinearOpMode {
     }
 
     private void Drive(){
-        if (gamepad1.right_trigger>0) MecanumDrive(gamepad1.left_stick_y, -gamepad1.left_stick_x,gamepad1.right_stick_x );
-        else MecanumDrive(-gamepad1.left_stick_y, gamepad1.left_stick_x,gamepad1.right_stick_x );
+        if (gamepad1.right_trigger>0) MecanumDrive(-gamepad1.left_stick_y, gamepad1.left_stick_x,-gamepad1.right_stick_x );
+        else MecanumDrive(gamepad1.left_stick_y, -gamepad1.left_stick_x,-gamepad1.right_stick_x );
     }
     private void MecanumDrive(double forward, double strafe, double turn){
         // Mecanum drive calculations
