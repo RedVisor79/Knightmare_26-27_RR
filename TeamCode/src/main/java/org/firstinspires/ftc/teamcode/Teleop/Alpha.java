@@ -4,8 +4,10 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.CRServo;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
@@ -24,8 +26,8 @@ public class Alpha extends LinearOpMode {
     private DcMotorEx Pollen; // 1E
     private DcMotor LS; //2E
     private DcMotor INTAKE; // 3E
-    private Servo FLYWHEELGATE;
-    private Servo FLOWERGATE;
+    private CRServo FLYWHEELGATE;
+    private CRServo FLOWERGATE;
 
     // PID-controlled linear slide (see LinearSlideController.java)
     private LinearSlideController slide;
@@ -40,8 +42,7 @@ public class Alpha extends LinearOpMode {
     // Shooter velocity (tunable in FTC Dashboard)
     public static double NECTAR_VEL = 1750;
     public static double POLLEN_VEL = 1750;
-    private static boolean OPEN1 = false;
-    private static boolean OPEN2 = false;
+
 
     @Override
     public void runOpMode() {
@@ -57,8 +58,8 @@ public class Alpha extends LinearOpMode {
         Pollen = hardwareMap.get(DcMotorEx.class, "POLLEN");
         LS = hardwareMap.get(DcMotor.class, "LS");
         INTAKE = hardwareMap.get(DcMotor.class, "INTAKE");
-        FLYWHEELGATE = hardwareMap.get(Servo.class, "FLYWHEEL");
-        FLOWERGATE = hardwareMap.get(Servo.class, "FLOWER");
+        FLYWHEELGATE = hardwareMap.get(CRServo.class, "FLYWHEEL");
+        FLOWERGATE = hardwareMap.get(CRServo.class, "FLOWER");
 
 
         // Directions
@@ -70,8 +71,8 @@ public class Alpha extends LinearOpMode {
         Pollen.setDirection(DcMotor.Direction.REVERSE);
         LS.setDirection(DcMotor.Direction.REVERSE);
         //INTAKE.setDirection(DcMotor.Direction.REVERSE);
-        FLYWHEELGATE.setPosition(0.0);
-        FLOWERGATE.setPosition(0.0);
+        FLYWHEELGATE.setPower(0.0);
+        FLOWERGATE.setPower(0.0);
 
         // Reset encoders
         LB.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -102,7 +103,7 @@ public class Alpha extends LinearOpMode {
             Launcher();
             Intake();
             LinearSlide();
-            FlywheelGate();
+            //FlywheelGate();
             FlowerGate();
 
 
@@ -118,8 +119,6 @@ public class Alpha extends LinearOpMode {
             telemetry.addData("LF:", lfPower);
             telemetry.addData("RB:", rbPower);
             telemetry.addData("RF:", rfPower);
-            telemetry.addData("Flywheel Gate: ", OPEN1);
-            telemetry.addData("Flower Gate: ",OPEN2);
             telemetry.update();
         }
     }
@@ -157,19 +156,29 @@ public class Alpha extends LinearOpMode {
         slide.update(gamepad1.dpad_up);
     }
 
-    public void FlowerGate(){
-        if (gamepad1.dpad_right){
-            if (!OPEN1) FLYWHEELGATE.setPosition(1);
-            else FLYWHEELGATE.setPosition(0);
-            OPEN1= !OPEN1;
+    public void FlowerGate() {
+        int alternate = 1;
+        int timeOut = 500;
+        if (gamepad1.dpad_left) {
+            alternate++;
+            if(alternate%2==1)FLOWERGATE.setDirection(CRServo.Direction.REVERSE);
+            else FLOWERGATE.setDirection(CRServo.Direction.FORWARD);
+            FLOWERGATE.setPower(1);
+            sleep(timeOut);
+            FLOWERGATE.setPower(0);
         }
     }
 
     public void FlywheelGate(){
-        if (gamepad1.dpad_left){
-            if (!OPEN2) FLOWERGATE.setPosition(1);
-            else FLOWERGATE.setPosition(0);
-            OPEN2=!OPEN2;
+        int alternate = 1;
+        int timeOut = 500;
+        if (gamepad1.dpad_right) {
+            alternate++;
+            if(alternate%2==1)FLYWHEELGATE.setDirection(CRServo.Direction.REVERSE);
+            else FLOWERGATE.setDirection(CRServo.Direction.FORWARD);
+            FLYWHEELGATE.setPower(1);
+            sleep(timeOut);
+            FLYWHEELGATE.setPower(0);
         }
     }
 
