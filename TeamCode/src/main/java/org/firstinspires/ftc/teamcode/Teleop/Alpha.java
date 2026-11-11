@@ -42,6 +42,8 @@ public class Alpha extends LinearOpMode {
     // Shooter velocity (tunable in FTC Dashboard)
     public static double NECTAR_VEL = 1750;
     public static double POLLEN_VEL = 1750;
+    private boolean FLOWER_STATE = false;
+    private boolean FLYWHEEL_STATE = false;
 
 
     @Override
@@ -65,9 +67,6 @@ public class Alpha extends LinearOpMode {
         // Directions
         LB.setDirection(DcMotor.Direction.REVERSE);
         LF.setDirection(DcMotor.Direction.REVERSE);
-        //RB.setDirection(DcMotor.Direction.REVERSE);
-        //RF.setDirection(DcMotor.Direction.REVERSE);
-        //Nectar.setDirection(DcMotor.Direction.REVERSE);
         Pollen.setDirection(DcMotor.Direction.REVERSE);
         LS.setDirection(DcMotor.Direction.REVERSE);
         //INTAKE.setDirection(DcMotor.Direction.REVERSE);
@@ -103,7 +102,7 @@ public class Alpha extends LinearOpMode {
             Launcher();
             Intake();
             LinearSlide();
-            //FlywheelGate();
+            FlywheelGate();
             FlowerGate();
 
 
@@ -157,27 +156,23 @@ public class Alpha extends LinearOpMode {
     }
 
     public void FlowerGate() {
-        int alternate = 1;
-        int timeOut = 500;
         if (gamepad1.dpad_left) {
-            alternate++;
-            if(alternate%2==1)FLOWERGATE.setDirection(CRServo.Direction.REVERSE);
+            FLOWER_STATE=!FLOWER_STATE;
+            if(FLOWER_STATE)FLOWERGATE.setDirection(CRServo.Direction.REVERSE);
             else FLOWERGATE.setDirection(CRServo.Direction.FORWARD);
             FLOWERGATE.setPower(1);
-            sleep(timeOut);
+            sleep(400);
             FLOWERGATE.setPower(0);
         }
     }
 
-    public void FlywheelGate(){
-        int alternate = 1;
-        int timeOut = 500;
-        if (gamepad1.dpad_right) {
-            alternate++;
-            if(alternate%2==1)FLYWHEELGATE.setDirection(CRServo.Direction.REVERSE);
-            else FLOWERGATE.setDirection(CRServo.Direction.FORWARD);
-            FLYWHEELGATE.setPower(1);
-            sleep(timeOut);
+    public void FlywheelGate() {
+       if (gamepad1.dpad_right) {
+            FLYWHEEL_STATE=!FLYWHEEL_STATE;
+            if(FLYWHEEL_STATE) FLYWHEELGATE.setDirection(CRServo.Direction.REVERSE);
+            else FLYWHEELGATE.setDirection(CRServo.Direction.FORWARD);
+            FLYWHEELGATE.setPower(0.25);
+            sleep(100);
             FLYWHEELGATE.setPower(0);
         }
     }
