@@ -161,7 +161,7 @@ public class Alpha extends LinearOpMode {
             if(FLOWER_STATE)FLOWERGATE.setDirection(CRServo.Direction.REVERSE);
             else FLOWERGATE.setDirection(CRServo.Direction.FORWARD);
             FLOWERGATE.setPower(1);
-            sleep(400);
+            sleep(200);
             FLOWERGATE.setPower(0);
         }
     }
@@ -172,7 +172,7 @@ public class Alpha extends LinearOpMode {
             if(FLYWHEEL_STATE) FLYWHEELGATE.setDirection(CRServo.Direction.REVERSE);
             else FLYWHEELGATE.setDirection(CRServo.Direction.FORWARD);
             FLYWHEELGATE.setPower(1);
-            sleep(100);
+            sleep(200);
             FLYWHEELGATE.setPower(0);
         }
     }
