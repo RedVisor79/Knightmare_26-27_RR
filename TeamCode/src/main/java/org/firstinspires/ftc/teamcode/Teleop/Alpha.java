@@ -171,7 +171,7 @@ public class Alpha extends LinearOpMode {
             FLYWHEEL_STATE=!FLYWHEEL_STATE;
             if(FLYWHEEL_STATE) FLYWHEELGATE.setDirection(CRServo.Direction.REVERSE);
             else FLYWHEELGATE.setDirection(CRServo.Direction.FORWARD);
-            FLYWHEELGATE.setPower(0.25);
+            FLYWHEELGATE.setPower(1);
             sleep(100);
             FLYWHEELGATE.setPower(0);
         }
