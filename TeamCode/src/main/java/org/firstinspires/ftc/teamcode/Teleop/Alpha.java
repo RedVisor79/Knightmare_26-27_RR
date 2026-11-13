@@ -46,6 +46,7 @@ public class Alpha extends LinearOpMode {
     private boolean FLYWHEEL_STATE = false;
 
 
+
     @Override
     public void runOpMode() {
         ElapsedTime runtime = new ElapsedTime();
@@ -70,8 +71,9 @@ public class Alpha extends LinearOpMode {
         Pollen.setDirection(DcMotor.Direction.REVERSE);
         LS.setDirection(DcMotor.Direction.REVERSE);
         //INTAKE.setDirection(DcMotor.Direction.REVERSE);
-        FLYWHEELGATE.setPower(0.0);
-        FLOWERGATE.setPower(0.0);
+        FLOWERGATE.setDirection(CRServo.Direction.REVERSE);
+        FLYWHEELGATE.setPower(0.8);
+        FLOWERGATE.setPower(-0.25);
 
         // Reset encoders
         LB.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -158,22 +160,18 @@ public class Alpha extends LinearOpMode {
     public void FlowerGate() {
         if (gamepad1.dpad_left) {
             FLOWER_STATE=!FLOWER_STATE;
-            if(FLOWER_STATE)FLOWERGATE.setDirection(CRServo.Direction.REVERSE);
-            else FLOWERGATE.setDirection(CRServo.Direction.FORWARD);
-            FLOWERGATE.setPower(1);
+            if(FLOWER_STATE) FLOWERGATE.setPower(0.75);
+            else FLOWERGATE.setPower(-0.25);
             sleep(200);
-            FLOWERGATE.setPower(0);
         }
     }
 
     public void FlywheelGate() {
        if (gamepad1.dpad_right) {
             FLYWHEEL_STATE=!FLYWHEEL_STATE;
-            if(FLYWHEEL_STATE) FLYWHEELGATE.setDirection(CRServo.Direction.REVERSE);
-            else FLYWHEELGATE.setDirection(CRServo.Direction.FORWARD);
-            FLYWHEELGATE.setPower(1);
+            if(FLYWHEEL_STATE) FLYWHEELGATE.setPower(-0.45);
+            else FLYWHEELGATE.setPower(0.8);
             sleep(200);
-            FLYWHEELGATE.setPower(0);
         }
     }
 
